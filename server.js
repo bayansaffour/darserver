@@ -5,14 +5,9 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const connectDB = require("./config/db");
 
+// استيراد الـ routes
 const newsRoutes = require("./routes/newsRoutes");
 const authRoutes = require("./routes/authRoutes");
-
-// Check for required environment variables
-if (!process.env.JWT_SECRET) {
-  console.error("JWT_SECRET is not defined in environment variables");
-  process.exit(1);
-}
 
 const subscriberRoutes = require("./routes/subscriberRoutes");
 const contactRoutes = require("./routes/contactRoutes");
@@ -30,11 +25,10 @@ const resourceRoutes = require("./routes/resourceRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Create uploads directory if it doesn't exist
+// إنشاء مجلد uploads لو غير موجود
 const uploadsDir = path.join(__dirname, "uploads");
 if (!require("fs").existsSync(uploadsDir)) {
   require("fs").mkdirSync(uploadsDir, { recursive: true });
@@ -45,14 +39,20 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-// Serve static files
+// تقديم الملفات الثابتة
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.static(path.join(__dirname, "public")));
 
-// Connect to database
+// ربط قاعدة البيانات
 connectDB();
 
-// Routes
+// التحقق من متغير البيئة الأساسي (JWT_SECRET)
+if (!process.env.JWT_SECRET) {
+  console.error("JWT_SECRET is not defined in environment variables");
+  process.exit(1);
+}
+
+// تعريف Routes الخاصة بالـ API
 app.use("/api/auth", authRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api", volunteerRoutes);
@@ -71,8 +71,17 @@ app.use("/api/resources", resourceRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/upload", uploadRoutes);
 
+// إضافة route رئيسي للرد على / (لتجنب رسالة Cannot GET /)
+app.get("/", (req, res) => {
+  res.send("Backend is running ✅");
+});
 
-// Error handling middleware
+// في حال أردت تقديم React أو أي SPA، أضف هذا (اختياري)
+// app.get("*", (req, res) => {
+//   res.sendFile(path.join(__dirname, "public", "index.html"));
+// });
+
+// Middleware لمعالجة الأخطاء
 app.use((err, req, res, next) => {
   console.error("Server error:", err);
   res.status(500).json({
@@ -82,9 +91,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
+// بدء تشغيل السيرفر
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
+  console.log("Connecting to:", process.env.MONGO_URI);
 });
-
-console.log("Connecting to:", process.env.MONGO_URI);
