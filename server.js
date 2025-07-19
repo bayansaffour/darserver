@@ -1,14 +1,12 @@
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const connectDB = require("./config/db");
 
 // استيراد الـ routes
 const newsRoutes = require("./routes/newsRoutes");
 const authRoutes = require("./routes/authRoutes");
-
 const subscriberRoutes = require("./routes/subscriberRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -29,9 +27,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // إنشاء مجلد uploads لو غير موجود
+const fs = require("fs");
 const uploadsDir = path.join(__dirname, "uploads");
-if (!require("fs").existsSync(uploadsDir)) {
-  require("fs").mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
 // Middleware
@@ -39,8 +38,10 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-// تقديم الملفات الثابتة
+// تقديم الملفات الثابتة - ملفات الرفع
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// لو عندك مجلد public للملفات الثابتة مثل favicon أو صور عامة
 app.use(express.static(path.join(__dirname, "public")));
 
 // ربط قاعدة البيانات
@@ -71,15 +72,22 @@ app.use("/api/resources", resourceRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/upload", uploadRoutes);
 
-// إضافة route رئيسي للرد على / (لتجنب رسالة Cannot GET /)
-app.get("/", (req, res) => {
-  res.send("Backend is running ✅");
-});
+// نقطة مهمة: لو عندك مشروع React مبني (مثلاً في مجلد ../client/dist)
+// استضافة React - ضع المسار الصحيح حسب مكان مجلد build عندك
+const reactBuildPath = path.join(__dirname, "../client/dist");
+if (fs.existsSync(reactBuildPath)) {
+  app.use(express.static(reactBuildPath));
 
-// في حال أردت تقديم React أو أي SPA، أضف هذا (اختياري)
-// app.get("*", (req, res) => {
-//   res.sendFile(path.join(__dirname, "public", "index.html"));
-// });
+  // إعادة توجيه كل الطلبات غير المعرفة إلى index.html لكي يعمل React Router
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(reactBuildPath, "index.html"));
+  });
+} else {
+  // لو ما عندك React مبني، احتفظ برد بسيط على جذر السيرفر
+  app.get("/", (req, res) => {
+    res.send("Backend is running ✅");
+  });
+}
 
 // Middleware لمعالجة الأخطاء
 app.use((err, req, res, next) => {
